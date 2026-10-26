@@ -30,12 +30,57 @@ function Tile({ label, position, color }: { label: string; position: [number, nu
     >
       <boxGeometry args={[0.32, 0.32, 0.06]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 1.2 : 0.45} roughness={0.3} metalness={0.4} />
-      <Html center distanceFactor={9} position={[0, 0.45, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
-          <span className={`${hover ? "opacity-100" : "opacity-0"} transition-opacity whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 font-mono text-sm text-popover-foreground`}>
+      {hover && (
+        <Html center distanceFactor={9} position={[0, 0.45, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+          <span className="whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 font-mono text-sm text-popover-foreground shadow-lg">
             {label}
           </span>
         </Html>
+      )}
     </mesh>
+  );
+}
+
+function ClusterBadge({ name }: { name: string }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 140;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, 512, 140);
+
+    // Dark glass pill background
+    ctx.fillStyle = "rgba(18, 14, 38, 0.92)";
+    ctx.strokeStyle = "rgba(155, 123, 255, 0.5)";
+    ctx.lineWidth = 6;
+
+    const x = 24, y = 16, w = 464, h = 108, r = 54;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    ctx.fill();
+    ctx.stroke();
+
+    // Category heading text
+    ctx.font = "bold 40px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(name.toUpperCase(), 256, 72);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+  }, [name]);
+
+  if (!texture) return null;
+
+  return (
+    <sprite position={[0, 1.45, 0]} scale={[1.85, 0.51, 1]}>
+      <spriteMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+    </sprite>
   );
 }
 
@@ -44,12 +89,24 @@ function Clusters({ drag, egg }: { drag: React.MutableRefObject<Drag>; egg: bool
   const layout = useMemo(() => {
     return skillGroups.map((g, gi) => {
       const a = (gi / skillGroups.length) * Math.PI * 2;
-      const center: [number, number, number] = [Math.cos(a) * 3.4, (gi % 2 ? 0.7 : -0.7), Math.sin(a) * 3.4];
+      const radius = 3.2;
+      const center: [number, number, number] = [
+        Math.cos(a) * radius,
+        gi % 2 ? 0.5 : -0.5,
+        Math.sin(a) * radius,
+      ];
       const tiles = g.skills.map((s, si) => {
         const phi = Math.acos(1 - (2 * (si + 0.5)) / g.skills.length);
         const th = Math.PI * (1 + Math.sqrt(5)) * si;
-        const r = 0.9;
-        return { label: s, pos: [Math.sin(phi) * Math.cos(th) * r, Math.cos(phi) * r, Math.sin(phi) * Math.sin(th) * r] as [number, number, number] };
+        const r = 0.85;
+        return {
+          label: s,
+          pos: [
+            Math.sin(phi) * Math.cos(th) * r,
+            Math.cos(phi) * r,
+            Math.sin(phi) * Math.sin(th) * r,
+          ] as [number, number, number],
+        };
       });
       return { name: g.name, center, tiles };
     });
@@ -65,14 +122,10 @@ function Clusters({ drag, egg }: { drag: React.MutableRefObject<Drag>; egg: bool
 
   const palette = egg ? EGG_COLORS : GROUP_COLORS;
   return (
-    <group ref={root}>
+    <group ref={root} position={[0, 0.2, 0]}>
       {layout.map((g, gi) => (
         <group key={g.name} position={g.center}>
-          <Html center position={[0, 1.45, 0]} distanceFactor={10} zIndexRange={[10, 0]}>
-            <span className="whitespace-nowrap font-mono text-sm font-semibold uppercase tracking-widest text-foreground">
-              {g.name}
-            </span>
-          </Html>
+          <ClusterBadge name={g.name} />
           {g.tiles.map((t) => (
             <Tile key={t.label} label={t.label} position={t.pos} color={palette[gi % palette.length]!} />
           ))}
@@ -97,7 +150,7 @@ export default function SkillsOrbit() {
 
   return (
     <div
-      className="relative h-[420px] w-full select-none md:h-[520px]"
+      className="relative h-[440px] w-full select-none md:h-[540px]"
       style={{ touchAction: "pan-y" }}
       onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY, dragging: false, locked: false }; }}
       onPointerMove={(e) => {
@@ -117,7 +170,7 @@ export default function SkillsOrbit() {
       role="img"
       aria-label="Interactive 3D map of skill clusters. Drag sideways to rotate."
     >
-      <Canvas frameloop={visible ? "always" : "never"} dpr={[1, 2]} camera={{ position: [0, 1.5, window.innerWidth < 640 ? 14 : 8.5], fov: 50 }}>
+      <Canvas frameloop={visible ? "always" : "never"} dpr={[1, 2]} camera={{ position: [0, 1.4, window.innerWidth < 640 ? 13.5 : 8.8], fov: 48 }}>
         <ambientLight intensity={0.6} />
         <pointLight position={[4, 5, 6]} intensity={40} />
         <pointLight position={[-5, -3, 4]} intensity={20} color="#4fe3f0" />

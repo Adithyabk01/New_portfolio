@@ -13,6 +13,7 @@ import Journey from "@/components/Journey";
 import Contact from "@/components/Contact";
 import Loader from "@/components/Loader";
 import Background2D from "@/components/Background2D";
+import Chatbot from "@/components/Chatbot";
 
 const Scene = lazy(() => import("@/components/Scene"));
 const Cursor = lazy(() => import("@/components/Cursor"));
@@ -134,6 +135,9 @@ function Index() {
         <Journey />
         <Contact />
       </main>
+      <ClientOnly fallback={null}>
+        <Chatbot />
+      </ClientOnly>
     </div>
   );
 }
